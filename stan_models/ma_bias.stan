@@ -1,23 +1,58 @@
 // generated with brms 2.15.0
 functions {
-  // function from library(publipha) 
-  // Note: alpha is from smallest (0) to largest (1)
-  real normal_lnorm(real theta, real tau, real sigma,
-  real [] alpha, vector eta) {
-    int k = size(alpha);
+  // // function from library(publipha)
+  // // Note: alpha is from smallest (0) to largest (1)
+  // real normal_lnorm(real theta, real tau, real sigma,
+  // real [] alpha, vector eta) {
+  //   int k = size(alpha);
+  //   real cutoff;
+  //   real cdf;
+  //   real summands[k - 1];
+  // 
+  //   summands[1] = eta[1];
+  // 
+  //   for(i in 2:(k - 1)) {
+  //     cutoff = inv_Phi(1 - alpha[i])*sigma;
+  //     cdf = normal_cdf(cutoff, theta, sqrt(tau * tau + sigma * sigma));
+  //     summands[i] = cdf*(eta[i] - eta[i - 1]);
+  //   }
+  // 
+  //   return(log(sum(summands)));
+  // }
+
+  // Note: alpha is from largest (1) to smallest (0)
+  real bias_normal_lnorm(real mu, real tau, real se, real [] alpha, vector omega) {
+    int k = size(alpha); // alpha is the critical alpha level (including 1 and 0) from large to small
     real cutoff;
+    real cutoff_pre;
     real cdf;
-    real summands[k - 1];
-    
-    summands[1] = eta[1];
-    
-    for(i in 2:(k - 1)) {
-      cutoff = inv_Phi(1 - alpha[i])*sigma;
-      cdf = normal_cdf(cutoff, theta, sqrt(tau * tau + sigma * sigma));
-      summands[i] = cdf*(eta[i] - eta[i - 1]);
+    real sumdenom[k - 1];
+
+    // // method from library(publipha) (publipha/src/stan_files/chunks/psma_likelihoods.stan)
+    // for (i in 2:k-1) {
+    //   cutoff = inv_Phi(1 - alpha[i]) * se;
+    //   cdf = normal_cdf(cutoff, mu, sqrt(tau * tau + se * se));
+    //   sumdenom[i-1] = cdf*(omega[i-1] - omega[i]);
+    // }
+    // sumdenom[k - 1] = omega[k - 1]; // always to be 1
+
+    // another method (similar to library(RoBMA))
+    for (i in 2:k) {
+      if (i == 2) {
+        cutoff = inv_Phi(1 - alpha[i]) * se;
+        sumdenom[i-1] = normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) * omega[i-1];
+      } else if (i == k) {
+        cutoff_pre = inv_Phi(1 - alpha[i-1]) * se;
+        sumdenom[i-1] = (1 - normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega[i-1];
+      } else {
+        cutoff_pre = inv_Phi(1 - alpha[i-1]) * se;
+        cutoff = inv_Phi(1 - alpha[i]) * se;
+        sumdenom[i-1] = (normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) -
+        normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega[i-1];
+      }
     }
-    
-    return(log(sum(summands)));
+
+    return(log(sum(sumdenom)));
   }
   
   // real bias_normal_prior_mini_lpdf(real mu, real Intercept, real tau, real se,
@@ -33,14 +68,26 @@ functions {
     real y = normal_lpdf(x | mu, se);
     real u = (1 - normal_cdf(x, 0, se));
     // real normalizer = normal_lnorm(Intercept, tau, se, alpha, omega);
-    real normalizer = normal_lnorm(mu, 0, se, alpha, omega);
-    
+    // real normalizer = normal_lnorm(mu, 0, se, alpha, omega);
+    // real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega);
+    real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega);
+
+    // when alpha is from 1 to 0
     for(i in 1:(k - 1)){
-    if(alpha[i] < u && u <= alpha[i + 1]) {
-      y += log(omega[i]);
-      break;
+      if(alpha[i] >= u && u > alpha[i + 1]) {
+        y += log(omega[i]);
+        break;
+      }
     }
-  }
+    
+    // when alpha is from 0 to 1
+    // for(i in 1:(k - 1)){
+    // if(alpha[i] < u && u <= alpha[i + 1]) {
+    //   y += log(omega[i]);
+    //   break;
+    // }
+  // }
+    
     return(y - normalizer);
   }
   
@@ -111,7 +158,7 @@ model {
       // add more terms to the linear predictor
       mu[n] += r_1_1[J_1[n]] * Z_1_1[n];
       // (bias-related)
-      target += bias_normal_mini_lpdf(Y[n] | mu[n], Intercept, sd_1[1], se[n], alpha, sort_desc(omega));
+      target += bias_normal_mini_lpdf(Y[n] | mu[n], Intercept, sd_1[1], se[n], alpha, omega);
 
       // target += normal_lpdf(Y[n] | mu[n], se[n]);
       // target += log(omega[I[n]]);
