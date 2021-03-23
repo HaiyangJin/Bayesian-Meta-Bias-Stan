@@ -1,25 +1,5 @@
 // generated with brms 2.15.0
 functions {
-  // // function from library(publipha)
-  // // Note: alpha is from smallest (0) to largest (1)
-  // real normal_lnorm(real theta, real tau, real sigma,
-  // real [] alpha, vector eta) {
-  //   int k = size(alpha);
-  //   real cutoff;
-  //   real cdf;
-  //   real summands[k - 1];
-  // 
-  //   summands[1] = eta[1];
-  // 
-  //   for(i in 2:(k - 1)) {
-  //     cutoff = inv_Phi(1 - alpha[i])*sigma;
-  //     cdf = normal_cdf(cutoff, theta, sqrt(tau * tau + sigma * sigma));
-  //     summands[i] = cdf*(eta[i] - eta[i - 1]);
-  //   }
-  // 
-  //   return(log(sum(summands)));
-  // }
-
   // Note: alpha is from largest (1) to smallest (0)
   real bias_normal_lnorm(real mu, real tau, real se, real [] alpha, vector omega) {
     int k = size(alpha); // alpha is the critical alpha level (including 1 and 0) from large to small
@@ -54,21 +34,14 @@ functions {
 
     return(log(sum(sumdenom)));
   }
-  
-  // real bias_normal_prior_mini_lpdf(real mu, real Intercept, real tau, real se,
-  // real [] alpha, vector omega) {
-  //   real y = normal_lpdf(mu | Intercept, tau);
-  //   real normalizer = normal_lnorm(Intercept, tau, se, alpha, omega);
-  //   return(y - normalizer);
-  // }
-  
+
   real bias_normal_mini_lpdf(real x, real mu, real Intercept, real tau, 
   real se, real [] alpha, vector omega) {
     int k = size(alpha);
     real y = normal_lpdf(x | mu, se);
     real u = (1 - normal_cdf(x, 0, se));
-    // real normalizer = normal_lnorm(Intercept, tau, se, alpha, omega);
-    // real normalizer = normal_lnorm(mu, 0, se, alpha, omega);
+    // there are two ways to calculate the normalizer; I prefer the second approach (at least now)
+    // they are supposed to be equivalent?
     // real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega);
     real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega);
 
@@ -79,42 +52,8 @@ functions {
         break;
       }
     }
-    
-    // when alpha is from 0 to 1
-    // for(i in 1:(k - 1)){
-    // if(alpha[i] < u && u <= alpha[i + 1]) {
-    //   y += log(omega[i]);
-    //   break;
-    // }
-  // }
-    
     return(y - normalizer);
   }
-  
-  // real bias_normal_maxi_lpdf(real x, real mu, real se,
-  // real [] alpha, vector omega) {
-  //   real y = bias_normal_mini_lpdf(x | mu, se, alpha, omega);
-  //   real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega);
-  //   return(y - normalizer);
-  // }
-  
-  // // This is the marginal lpdf as in Hedges' paper.
-  // real psma_normal_marginal_lpdf(real x, real theta0, real tau, real sigma,
-  // real [] alpha, vector eta) {
-  //   
-  //   int k = size(alpha);
-  //   real y = normal_lpdf(x | theta0, sqrt(tau * tau + sigma * sigma));
-  //   real u = (1 - normal_cdf(x, 0, sigma));
-  //   real normalizer = normal_lnorm(theta0, tau, sigma, alpha, eta);
-  //   
-  //   for(i in 1:(k - 1)){
-  //     if(alpha[i] < u && u <= alpha[i + 1]) {
-  //       y += log(eta[i]);
-  //       break;
-  //     }
-  //   }
-  //   return(y - normalizer);
-  // }
 }
 data {
   int<lower=1> N;  // total number of observations
@@ -159,14 +98,6 @@ model {
       mu[n] += r_1_1[J_1[n]] * Z_1_1[n];
       // (bias-related)
       target += bias_normal_mini_lpdf(Y[n] | mu[n], Intercept, sd_1[1], se[n], alpha, omega);
-
-      // target += normal_lpdf(Y[n] | mu[n], se[n]);
-      // target += log(omega[I[n]]);
-      // // denominators
-      // target += - log_sum_exp(
-      //   normal_lcdf(1.96 | mu[n], sqrt(se[n] * se[n] + sd_1[1] * sd_1[1])) + log(omega[1]),
-      //   normal_lccdf(1.96 | mu[n], sqrt(se[n] * se[n] + sd_1[1] * sd_1[1])) + log(omega[2])
-      //   );
     }
     // target += normal_lpdf(Y | mu, se);
   }
