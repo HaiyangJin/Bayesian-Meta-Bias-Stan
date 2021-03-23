@@ -67,8 +67,8 @@ data {
   vector[N] Z_1_1;
   int prior_only;  // should the likelihood be ignored?
   // (bias-related) 
-  int<lower=1> K; // number of critial alpha (not include 0 or 1)
-  real<lower=0,upper=1> alpha[K+2]; // start from 1 and finish at 0
+  int<lower=1> I; // number of critial alpha (not include 0 or 1)
+  real<lower=0,upper=1> alpha[I+1]; // start from 1 and finish at 0
 }
 transformed data {
   vector<lower=0>[N] se2 = square(se);
@@ -78,11 +78,11 @@ parameters {
   vector<lower=0>[M_1] sd_1;  // group-level standard deviations
   vector[N_1] z_1[M_1];  // standardized group-level effects
   // (bias-related)
-  simplex[K+1] theta; // 
+  simplex[I] theta; // 
 }
 transformed parameters {
   real<lower=0> sigma = 0;  // residual SD
-  vector<lower=0,upper=1>[K+1] omega;  // (bias-related) publication bias
+  vector<lower=0,upper=1>[I] omega;  // (bias-related) publication bias
   vector[N_1] r_1_1;  // actual group-level effects
   r_1_1 = (sd_1[1] * (z_1[1]));
   // (bias-related) calculate omega based on theta from dirichlet
@@ -107,7 +107,7 @@ model {
     - 1 * student_t_lccdf(0 | 3, 0, 2.5);
   target += std_normal_lpdf(z_1[1]);
   // (bias-related) 
-  target += dirichlet_lpdf(theta | rep_vector(2, K+1));
+  target += dirichlet_lpdf(theta | rep_vector(2, I));
 }
 generated quantities {
   // actual population-level intercept

@@ -44,7 +44,7 @@ brmfit3 <- brm(g | se(SE) ~ 1 + (1|experiment), data = df3,
                chains = 4, cores = 4, seed = 12)
 data_ls3 <- standata(brmfit3)
 data_ls3$alpha <- c(1, 0.05, 0.025, 0)
-data_ls3$K <- length(data_ls3$alpha)-2
+data_ls3$I <- length(data_ls3$alpha)-1  # number of intervals
 
 ### Fit the model with the publication bias
 ex3_bias <- stan(file = 'stan_models/ma_bias.stan', #  'stan_bias.stan',
