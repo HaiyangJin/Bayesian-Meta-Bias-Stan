@@ -32,8 +32,8 @@ functions {
     int k = size(alpha);
     real y = normal_lpdf(x | mu, se);
     real u = (1 - normal_cdf(x, 0, se));
-    // real normalizer = normal_lnorm(Intercept, tau, se, alpha, omega);
-    real normalizer = normal_lnorm(mu, 0, se, alpha, omega);
+    real normalizer = normal_lnorm(Intercept, tau, se, alpha, omega);
+    // real normalizer = normal_lnorm(mu, 0, se, alpha, omega);
     
     for(i in 1:(k - 1)){
     if(alpha[i] < u && u <= alpha[i + 1]) {

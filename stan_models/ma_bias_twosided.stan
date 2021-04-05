@@ -70,8 +70,8 @@ functions {
     real u;
     // there are two ways to calculate the normalizer; I prefer the second approach (at least now)
     // they are supposed to be equivalent?
-    // real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega);
-    real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega, side, cutoffs);
+    real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega, side, cutoffs);
+    // real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega, side, cutoffs);
     
     if (side == 1) {
       u = (1 - normal_cdf(x, 0, se));

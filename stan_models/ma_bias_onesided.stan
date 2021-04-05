@@ -59,8 +59,8 @@ functions {
     real u = (1 - normal_cdf(x, 0, se));
     // there are two ways to calculate the normalizer; I prefer the second approach (at least now)
     // they are supposed to be equivalent?
-    // real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega);
-    real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega, side);
+    real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega, side);
+    // real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega, side);
     
     // when alpha is excluding 1 and 0
     if (u >= alpha[1]/2) {
