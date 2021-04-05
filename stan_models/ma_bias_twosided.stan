@@ -24,11 +24,12 @@ functions {
   } 
   
   // Note: alpha is from largest (1) to smallest (0)
-  real bias_normal_lnorm(real mu, real tau, real se, real [] alpha, vector omega, int side) {
+  real bias_normal_lnorm(real mu, real tau, real se, real [] alpha, 
+  vector omega, int side, real [] cutoffs) {
     // alpha is the critical alpha level (excluding 1 and 0) from large to small
     int k = size(alpha);  // length of alpha
     int I = k*side+1;  // I is the number of intervals
-    real cutoffs[I-1] = critical_value(alpha, side);
+    // real cutoffs[I-1] = critical_value(alpha, side);
     real cutoff;
     real cutoff_pre;
     vector[k] omega_neg;
@@ -63,14 +64,14 @@ functions {
   }
   
   real bias_normal_mini_lpdf(real x, real mu, real Intercept, real tau, 
-  real se, real [] alpha, vector omega, int side) {
+  real se, real [] alpha, vector omega, int side, real [] cutoffs) {
     int k = size(alpha)+1; // length of omega
     real y = normal_lpdf(x | mu, se);
     real u;
     // there are two ways to calculate the normalizer; I prefer the second approach (at least now)
     // they are supposed to be equivalent?
     // real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega);
-    real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega, side);
+    real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega, side, cutoffs);
     
     if (side == 1) {
       u = (1 - normal_cdf(x, 0, se));
@@ -113,6 +114,7 @@ data {
 }
 transformed data {
   vector<lower=0>[N] se2 = square(se);
+  real cutoffs[(I-1)*S] = critical_value(alpha, S); // critical cutoff values
 }
 parameters {
   real Intercept;  // temporary intercept for centered predictors
@@ -138,7 +140,8 @@ model {
       // add more terms to the linear predictor
       mu[n] += r_1_1[J_1[n]] * Z_1_1[n];
       // (bias-related)
-      target += bias_normal_mini_lpdf(Y[n] | mu[n], Intercept, sd_1[1], se[n], alpha, omega, S);
+      target += bias_normal_mini_lpdf(Y[n] | mu[n], Intercept, sd_1[1], se[n], 
+      alpha, omega, S, cutoffs);
     }
     // target += normal_lpdf(Y | mu, se);
   }

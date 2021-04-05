@@ -112,7 +112,6 @@ robma <- RoBMA(d = df3$g, se = df3$SE,
                priors_mu_null = NULL,
                priors_tau_null = NULL,
                priors_omega_null = NULL)
-robma$models[12]
 robma$models
 
 # one-sided model
@@ -124,6 +123,5 @@ robma_one <- RoBMA(d = df3$g, se = df3$SE,
                    priors_mu_null = NULL,
                    priors_tau_null = NULL,
                    priors_omega_null = NULL)
-robma_one$models[12]
 robma_one$models
 
