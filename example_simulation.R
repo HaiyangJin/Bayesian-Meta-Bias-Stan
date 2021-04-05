@@ -49,35 +49,15 @@ brmfit3 <- brm(g | se(SE) ~ 1 + (1|experiment), data = df3,
                chains = 4, cores = 4, seed = 12)
 
 ## Fit the model with the publication bias (with one-sided)
-data_ls3 <- standata(brmfit3)
-data_ls3$alpha <- c(1, 0.05, 0.025, 0)
-# data_ls3$alpha <- c(0.10, 0.05)
-data_ls3$I <- length(data_ls3$alpha)-1  # number of intervals
-ex3_bias <- stan(file = 'stan_models/ma_bias.stan', #  'stan_bias.stan',
-                 data = data_ls3,
-                 chains = 4, cores = 4, seed = 12,
-                 control = list(adapt_delta = .99))
-MCMCsummary(ex3_bias, params=c("b_Intercept", "omega"))
-pairs(ex3_bias, pars=c("omega", "b_Intercept"))
-
-## Fit the model with the publication bias (with one-sided)
 data_ls3_one <- standata(brmfit3)
 data_ls3_one$alpha <- c(0.10, 0.05)
 data_ls3_one$I <- length(data_ls3_one$alpha)+1  # number of intervals
-data_ls3_one$S <- 1 # one-sided tests
-ex3_bias_one <- stan(file = 'stan_models/ma_bias_onesided.stan', #  'stan_bias.stan',
-                 data = data_ls3_one,
-                 chains = 4, cores = 4, seed = 12,
-                 control = list(adapt_delta = .99))
-MCMCsummary(ex3_bias_one, params=c("b_Intercept", "omega"))
-pairs(ex3_bias_one, pars=c("omega", "b_Intercept"))
-
-## Fit the model with the publication bias (with one-sided)
-ex3_bias_one2 <- stan(file = 'stan_models/ma_bias_twosided.stan', #  'stan_bias.stan',
+data_ls3_one$S <- 1
+ex3_bias_one <- stan(file = 'stan_models/ma_bias_twosided.stan', #  'stan_bias.stan',
                      data = data_ls3_one,
                      chains = 4, cores = 4, seed = 12,
                      control = list(adapt_delta = .99))
-MCMCsummary(ex3_bias_one2, params=c("b_Intercept", "omega"))
+MCMCsummary(ex3_bias_one, params=c("b_Intercept", "omega"))
 pairs(ex3_bias_one, pars=c("omega", "b_Intercept"))
 
 ### Fit the model with the publication bias (with two-sided)
