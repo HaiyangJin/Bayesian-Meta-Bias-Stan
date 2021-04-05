@@ -2,7 +2,7 @@
 ## Simulate data
 library(tidyverse)
 
-set.seed(12)
+set.seed(2021)
 N_pw <- 50           # number of studies for PW
 N_pw_a <- 38         # number of articles
 theta_pw <- 0.3      # the true effect for PW (small effects) 
@@ -34,6 +34,10 @@ df_simu <- tibble(
 
 df3 <- filter(df_simu, published==1)
 
+# df_simu %>% 
+#     group_by(K) %>% 
+#     summarize(mean(published))
+
 ## Fit the model
 library(brms)
 library(rstan)
@@ -44,7 +48,7 @@ rstan_options(auto_write = TRUE)
 brmfit3 <- brm(g | se(SE) ~ 1 + (1|experiment), data = df3,
                chains = 4, cores = 4, seed = 12)
 
-### Fit the model with the publication bias (with one-sided) 
+## Fit the model with the publication bias (with one-sided)
 data_ls3 <- standata(brmfit3)
 data_ls3$alpha <- c(1, 0.05, 0.025, 0)
 # data_ls3$alpha <- c(0.10, 0.05)
@@ -56,7 +60,7 @@ ex3_bias <- stan(file = 'stan_models/ma_bias.stan', #  'stan_bias.stan',
 MCMCsummary(ex3_bias, params=c("b_Intercept", "omega"))
 pairs(ex3_bias, pars=c("omega", "b_Intercept"))
 
-### Fit the model with the publication bias (with one-sided)
+## Fit the model with the publication bias (with one-sided)
 data_ls3_one <- standata(brmfit3)
 data_ls3_one$alpha <- c(0.10, 0.05)
 data_ls3_one$I <- length(data_ls3_one$alpha)+1  # number of intervals
@@ -67,4 +71,59 @@ ex3_bias_one <- stan(file = 'stan_models/ma_bias_onesided.stan', #  'stan_bias.s
                  control = list(adapt_delta = .99))
 MCMCsummary(ex3_bias_one, params=c("b_Intercept", "omega"))
 pairs(ex3_bias_one, pars=c("omega", "b_Intercept"))
+
+## Fit the model with the publication bias (with one-sided)
+ex3_bias_one2 <- stan(file = 'stan_models/ma_bias_twosided.stan', #  'stan_bias.stan',
+                     data = data_ls3_one,
+                     chains = 4, cores = 4, seed = 12,
+                     control = list(adapt_delta = .99))
+MCMCsummary(ex3_bias_one2, params=c("b_Intercept", "omega"))
+pairs(ex3_bias_one, pars=c("omega", "b_Intercept"))
+
+### Fit the model with the publication bias (with two-sided)
+data_ls3_two <- standata(brmfit3)
+data_ls3_two$alpha <- c(0.10, 0.05)
+data_ls3_two$I <- length(data_ls3_two$alpha)+1  # number of intervals
+data_ls3_two$S <- 2 # two-sided tests
+ex3_bias_two <- stan(file = 'stan_models/ma_bias_twosided.stan', #  'stan_bias.stan',
+                     data = data_ls3_two,
+                     chains = 4, cores = 4, seed = 12,
+                     control = list(adapt_delta = .99))
+MCMCsummary(ex3_bias_two, params=c("b_Intercept", "omega"))
+pairs(ex3_bias_two, pars=c("omega", "b_Intercept"))
+
+###################
+# other packages
+library(publipha)
+# one-sided model
+psmafit <- psma(yi = df3$g, vi = df3$SE^2, alpha = c(0, 0.025, 0.05, 1),
+                chains = 4, cores = 4, seed = 12,
+                control = list(adapt_delta = .99))
+MCMCsummary(psmafit, params=c("theta0", "eta"))
+
+
+library(RoBMA)
+# two-sided model
+robma <- RoBMA(d = df3$g, se = df3$SE,
+               priors_omega = list(prior(distribution = "two.sided", 
+                                          parameters = list(alpha = c(1, 1, 1), 
+                                                            steps = c(.05, .10)), 
+                                         prior_odds = 1)),
+               priors_mu_null = NULL,
+               priors_tau_null = NULL,
+               priors_omega_null = NULL)
+robma$models[12]
+robma$models
+
+# one-sided model
+robma_one <- RoBMA(d = df3$g, se = df3$SE,
+                   priors_omega = list(prior(distribution = "one.sided", 
+                                             parameters = list(alpha = c(1, 1, 1), 
+                                                               steps = c(.05, .10)), 
+                                             prior_odds = 1)),
+                   priors_mu_null = NULL,
+                   priors_tau_null = NULL,
+                   priors_omega_null = NULL)
+robma_one$models[12]
+robma_one$models
 

@@ -1,7 +1,7 @@
 // generated with brms 2.15.0
 functions {
   
-  real[] critical_value(real [] alpha, real se, int side) {
+  real[] critical_value(real [] alpha, int side) {
     int k = size(alpha);
     real alpha_asc[k] = sort_asc(alpha);
     real alpha_desc[k] = sort_desc(alpha);
@@ -10,8 +10,8 @@ functions {
     real cutoffs[k * side]; 
     
     for (i in 1:k) {
-      cutoff_pos[i] = inv_Phi(1 - alpha_desc[i]/2) * se;
-      cutoff_neg[k+1-i] = inv_Phi(alpha_asc[i]/2) * se;
+      cutoff_pos[i] = inv_Phi(1 - alpha_desc[i]/2);
+      cutoff_neg[k+1-i] = inv_Phi(alpha_asc[i]/2);
     }
     
     if (side == 1) {
@@ -25,27 +25,37 @@ functions {
   
   // Note: alpha is from largest (1) to smallest (0)
   real bias_normal_lnorm(real mu, real tau, real se, real [] alpha, vector omega, int side) {
-    int k = size(alpha)*side+1; // alpha is the critical alpha level (excluding 1 and 0) from large to small
-    real cutoffs[k-1] = critical_value(alpha, se, side);
+    // alpha is the critical alpha level (excluding 1 and 0) from large to small
+    int k = size(alpha);  // length of alpha
+    int I = k*side+1;  // I is the number of intervals
+    real cutoffs[I-1] = critical_value(alpha, side);
     real cutoff;
     real cutoff_pre;
-    real cdf;
-    real sumdenom[k];
+    vector[k] omega_neg;
+    vector[I] omega_I;
+    real sumdenom[I];
+    
+    if (side == 2) {
+      omega_neg = sort_desc(omega)[1:k];
+      omega_I = append_row(omega_neg, omega);
+    } else if (side == 1) {
+      omega_I = omega;
+    }
     
     // calculate the denominator for one-sdied (positive) tests
     // similar to library(RoBMA)
-    for (i in 1:k) {
+    for (i in 1:I) {
           if (i == 1) {
-            cutoff = cutoffs[1]; 
-            sumdenom[1] = normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) * omega[1];
-          } else if (i == k) {
-            cutoff_pre = cutoffs[k-1]; 
-            sumdenom[k] = (1 - normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega[k];
+            cutoff = cutoffs[1] * se; 
+            sumdenom[1] = normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) * omega_I[1];
+          } else if (i == I) {
+            cutoff_pre = cutoffs[I-1] * se; 
+            sumdenom[I] = (1 - normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[I];
           } else {
-            cutoff_pre = cutoffs[i-1]; 
-            cutoff = cutoffs[i]; 
+            cutoff_pre = cutoffs[i-1] * se; 
+            cutoff = cutoffs[i] * se; 
             sumdenom[i] = (normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) -
-            normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega[i];
+            normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[i];
           }
     }
     
@@ -56,20 +66,26 @@ functions {
   real se, real [] alpha, vector omega, int side) {
     int k = size(alpha)+1; // length of omega
     real y = normal_lpdf(x | mu, se);
-    real u = (1 - normal_cdf(x, 0, se));
+    real u;
     // there are two ways to calculate the normalizer; I prefer the second approach (at least now)
     // they are supposed to be equivalent?
     // real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega);
     real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega, side);
     
+    if (side == 1) {
+      u = (1 - normal_cdf(x, 0, se));
+    } else if (side == 2) {
+      u = (1 - normal_cdf(fabs(x), 0, se))*2;
+    }
+    
     // when alpha is excluding 1 and 0
-    if (u >= alpha[1]/2) {
+    if (u > alpha[1]) {
       y += log(omega[1]);
-    } else if(u <= alpha[k-1]/2) {
+    } else if(u <= alpha[k-1]) {
       y += log(omega[k]);
     } else {
       for(i in 2:k-1){
-        if(u > alpha[i]/2  && u <= alpha[i - 1]/2) {
+        if(u > alpha[i]  && u <= alpha[i - 1]) {
           y += log(omega[i]);
           break;
         } 
@@ -138,3 +154,4 @@ generated quantities {
   // actual population-level intercept
   real b_Intercept = Intercept;
 }
+
