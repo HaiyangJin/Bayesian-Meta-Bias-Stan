@@ -69,7 +69,7 @@ functions {
   
   real weighted_normal_lpdf(real x, real mu, real Intercept, real tau, 
   real se, real [] alpha_d, vector omega, int side, real [] cutoffs) {
-    int k = size(alpha_d)+1; // length of omega
+    int k = size(alpha_d); // length of alpha
     real y = normal_lpdf(x | mu, se);
     real u;
     // there are two ways to calculate the normalizer; I prefer the second approach (at least now)
@@ -86,10 +86,10 @@ functions {
     // when alpha is excluding 1 and 0
     if (u > alpha_d[1]) {
       y += log(omega[1]);
-    } else if(u <= alpha_d[k-1]) {
-      y += log(omega[k]);
+    } else if(u <= alpha_d[k]) {
+      y += log(omega[k+1]);
     } else {
-      for(i in 2:k-1){
+      for(i in 2:k){
         if(u > alpha_d[i]  && u <= alpha_d[i - 1]) {
           y += log(omega[i]);
           break;
