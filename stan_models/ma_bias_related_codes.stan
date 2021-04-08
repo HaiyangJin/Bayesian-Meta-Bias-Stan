@@ -1,21 +1,25 @@
 // generated with brms 2.15.0
 functions {
-  real[] critical_value(real [] alpha, int side) {
-    int k = size(alpha);
-    real alpha_asc[k] = sort_asc(alpha);
-    real alpha_desc[k] = sort_desc(alpha);
+  real[] critical_value(real [] alpha_d, int side) {
+    int k = size(alpha_d);
+    real alpha_a[k] = sort_asc(alpha_d);
     real cutoff_pos[k];
     real cutoff_neg[k];
     real cutoffs[k * side]; 
     
-    for (i in 1:k) {
-      cutoff_pos[i] = inv_Phi(1 - alpha_desc[i]/2);
-      cutoff_neg[k+1-i] = inv_Phi(alpha_asc[i]/2);
-    }
-    
     if (side == 1) {
-      cutoffs = cutoff_pos;
+      for (i in 1:k) {
+        // calculate the one-sided cutoffs
+        cutoffs[i] = inv_Phi(1 - alpha_d[i]);
+        // cutoffs[i] = inv_Phi(1 - alpha_d[i]/2);  // don't think should use this
+      }
     } else if (side == 2) {
+      // for two-sided tests
+      for (i in 1:k) {
+        // calculate the two-sided cutoffs
+        cutoff_pos[i] = inv_Phi(1 - alpha_d[i]/2);
+        cutoff_neg[i] = inv_Phi(alpha_a[i]/2);
+      }
       cutoffs = append_array(cutoff_neg, cutoff_pos);
     }
     
@@ -23,10 +27,10 @@ functions {
   } 
   
   // Note: alpha is from largest (1) to smallest (0)
-  real bias_normal_lnorm(real mu, real tau, real se, real [] alpha, 
+  real weighted_normal_lnorm(real mu, real tau, real se, real [] alpha_d, 
   vector omega, int side, real [] cutoffs) {
     // alpha is the critical alpha level (excluding 1 and 0) from large to small
-    int k = size(alpha);  // length of alpha
+    int k = size(alpha_d);  // length of alpha
     int I = k*side+1;  // I is the number of intervals
     // real cutoffs[I-1] = critical_value(alpha, side);
     real cutoff;
@@ -62,15 +66,15 @@ functions {
     return(log(sum(sumdenom)));
   }
   
-  real bias_normal_mini_lpdf(real x, real mu, real Intercept, real tau, 
-  real se, real [] alpha, vector omega, int side, real [] cutoffs) {
-    int k = size(alpha)+1; // length of omega
+  real weighted_normal_lpdf(real x, real mu, real Intercept, real tau, 
+  real se, real [] alpha_d, vector omega, int side, real [] cutoffs) {
+    int k = size(alpha_d); // length of alpha
     real y = normal_lpdf(x | mu, se);
     real u;
     // there are two ways to calculate the normalizer; I prefer the second approach (at least now)
     // they are supposed to be equivalent?
-    real normalizer = bias_normal_lnorm(Intercept, tau, se, alpha, omega, side, cutoffs);
-    // real normalizer = bias_normal_lnorm(mu, 0, se, alpha, omega, side, cutoffs);
+    real normalizer = weighted_normal_lnorm(Intercept, tau, se, alpha_d, omega, side, cutoffs);
+    // real normalizer = weighted_normal_lnorm(mu, 0, se, alpha_d, omega, side, cutoffs);
     
     if (side == 1) {
       u = (1 - normal_cdf(x, 0, se));
@@ -79,13 +83,13 @@ functions {
     }
     
     // when alpha is excluding 1 and 0
-    if (u > alpha[1]) {
+    if (u > alpha_d[1]) {
       y += log(omega[1]);
-    } else if(u <= alpha[k-1]) {
-      y += log(omega[k]);
+    } else if(u <= alpha_d[k]) {
+      y += log(omega[k+1]);
     } else {
-      for(i in 2:k-1){
-        if(u > alpha[i]  && u <= alpha[i - 1]) {
+      for(i in 2:k){
+        if(u > alpha_d[i]  && u <= alpha_d[i - 1]) {
           y += log(omega[i]);
           break;
         } 
@@ -98,22 +102,23 @@ functions {
 data {
   //...
   // (bias-related) 
-  int<lower=1> I; // length of omega
-  real<lower=0,upper=1> alpha[I-1]; // start from 1 and finish at 0
-  int<lower=1, upper=2> S; // one-side or two-side tests
+  int<lower=1> N_alpha; // length of omega
+  real<lower=0,upper=1> alpha[N_alpha]; // start from 1 and finish at 0
+  int<lower=1, upper=2> side; // one-side or two-side tests
 }
 transformed data {
   //...
-  real cutoffs[(I-1)*S] = critical_value(alpha, S); // critical cutoff values
+  real<lower=0,upper=1> alpha_d[N_alpha] = sort_desc(alpha); // order alpha from large to small
+  real cutoffs[N_alpha*side] = critical_value(alpha_d, side); // critical cutoff values
 }
 parameters {
   // ...
   // (bias-related)
-  simplex[I] theta; // 
+  simplex[N_alpha+1] theta; // 
 }
 transformed parameters {
   //...
-  vector<lower=0,upper=1>[I] omega;  // (bias-related) publication bias
+  vector<lower=0>[N_alpha+1] omega;  // (bias-related) publication bias!!!
   //...
   // (bias-related) calculate omega based on theta from dirichlet
   omega = cumulative_sum(theta);
@@ -124,13 +129,13 @@ model {
   // initialize linear predictor term
   //...
   // (bias-related) For each study separately
-      target += bias_normal_mini_lpdf(Y[n] | mu[n], Intercept, sd_1[1], se[n], 
-      alpha, omega, S, cutoffs);
+  target += weighted_normal_lpdf(Y[n] | mu[n], Intercept, sd_1[1], se[n], 
+      alpha_d, omega, side, cutoffs);
   // target += normal_lpdf(Y | mu, se);
   
   // ...
   // (bias-related) 
-  target += dirichlet_lpdf(theta | rep_vector(2, I));
+  target += dirichlet_lpdf(theta | rep_vector(1, N_alpha+1));
 }
 generated quantities {
   // ...
