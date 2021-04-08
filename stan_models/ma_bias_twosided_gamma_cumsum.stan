@@ -126,17 +126,21 @@ parameters {
   vector<lower=0>[M_1] sd_1;  // group-level standard deviations
   vector[N_1] z_1[M_1];  // standardized group-level effects
   // (bias-related)
-  simplex[N_alpha+1] theta; // 
-  positive_ordered[N_alpha + 1] weights;
+  // simplex[N_alpha+1] theta; // 
+  real<lower=0> eta[N_alpha + 1];
 }
 transformed parameters {
   real<lower=0> sigma = 0;  // residual SD
-  vector<lower=0,upper=1>[N_alpha+1] omega;  // (bias-related) publication bias
+  real<lower=0,upper=1> std_eta[N_alpha + 1]; // 
+  vector<lower=0>[N_alpha+1] omega;  // (bias-related) publication bias <lower=0,upper=1>
   vector[N_1] r_1_1;  // actual group-level effects
   r_1_1 = (sd_1[1] * (z_1[1]));
   // (bias-related) calculate omega based on theta from dirichlet
   // omega = cumulative_sum(theta);
-  for(i in 1:(N_alpha + 1)) omega[i] = weights[i]/weights[N_alpha + 1];
+  for(i in 1:(N_alpha + 1)) {
+    std_eta[i] = eta[i] / sum(eta);
+    omega[i] = sum(std_eta[1:i]);
+  }
 }
 model {
   // likelihood including constants
@@ -159,7 +163,7 @@ model {
   target += std_normal_lpdf(z_1[1]);
   // (bias-related) 
   // target += dirichlet_lpdf(theta | rep_vector(2, N_alpha+1));
-  target += gamma_lpdf(weights | rep_vector(1, N_alpha+1), 1);
+  target += gamma_lpdf(eta | rep_vector(1, N_alpha+1), 1);
 }
 generated quantities {
   // actual population-level intercept

@@ -130,7 +130,9 @@ parameters {
 }
 transformed parameters {
   real<lower=0> sigma = 0;  // residual SD
-  vector<lower=0,upper=1>[N_alpha+1] omega;  // (bias-related) publication bias
+  // vector<lower=0,upper=1>[N_alpha+1] omega;  // (bias-related) publication bias!!!
+  // the model cannot converge if set upper=1 for omega
+  vector<lower=0>[N_alpha+1] omega;  // (bias-related) publication bias!!!
   vector[N_1] r_1_1;  // actual group-level effects
   r_1_1 = (sd_1[1] * (z_1[1]));
   // (bias-related) calculate omega based on theta from dirichlet
@@ -156,7 +158,7 @@ model {
     - 1 * student_t_lccdf(0 | 3, 0, 2.5);
   target += std_normal_lpdf(z_1[1]);
   // (bias-related) 
-  target += dirichlet_lpdf(theta | rep_vector(2, N_alpha+1));
+  target += dirichlet_lpdf(theta | rep_vector(1, N_alpha+1));
 }
 generated quantities {
   // actual population-level intercept
