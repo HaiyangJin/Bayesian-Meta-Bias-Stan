@@ -1,6 +1,6 @@
 // generated with brms 2.15.0
 functions {
-   
+  
   real[] critical_value(real [] alpha_d, int side) {
     int k = size(alpha_d);
     real alpha_a[k] = sort_asc(alpha_d);
@@ -50,18 +50,18 @@ functions {
     // calculate the denominator for one-sdied (positive) tests
     // similar to library(RoBMA)
     for (i in 1:I) {
-          if (i == 1) {
-            cutoff = cutoffs[1] * se; 
-            sumdenom[1] = normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) * omega_I[1];
-          } else if (i == I) {
-            cutoff_pre = cutoffs[I-1] * se; 
-            sumdenom[I] = (1 - normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[I];
-          } else {
-            cutoff_pre = cutoffs[i-1] * se; 
-            cutoff = cutoffs[i] * se; 
-            sumdenom[i] = (normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) -
-            normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[i];
-          }
+      if (i == 1) {
+        cutoff = cutoffs[1] * se; 
+        sumdenom[1] = normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) * omega_I[1];
+      } else if (i == I) {
+        cutoff_pre = cutoffs[I-1] * se; 
+        sumdenom[I] = (1 - normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[I];
+      } else {
+        cutoff_pre = cutoffs[i-1] * se; 
+        cutoff = cutoffs[i] * se; 
+        sumdenom[i] = (normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) -
+        normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[i];
+      }
     }
     
     return(log(sum(sumdenom)));
@@ -126,7 +126,7 @@ parameters {
   vector<lower=0>[M_1] sd_1;  // group-level standard deviations
   vector[N_1] z_1[M_1];  // standardized group-level effects
   // (bias-related)
-  simplex[N_alpha+1] theta; // 
+  simplex[N_alpha+1] eta; // 
 }
 transformed parameters {
   real<lower=0> sigma = 0;  // residual SD
@@ -135,8 +135,8 @@ transformed parameters {
   vector<lower=0>[N_alpha+1] omega;  // (bias-related) publication bias!!!
   vector[N_1] r_1_1;  // actual group-level effects
   r_1_1 = (sd_1[1] * (z_1[1]));
-  // (bias-related) calculate omega based on theta from dirichlet
-  omega = cumulative_sum(theta);
+  // (bias-related) calculate omega based on eta from dirichlet
+  omega = cumulative_sum(eta);
 }
 model {
   // likelihood including constants
@@ -153,12 +153,12 @@ model {
     // target += normal_lpdf(Y | mu, se);
   }
   // priors including constants
-  target += student_t_lpdf(Intercept | 3, 0.5, 2.5);
+  target += normal_lpdf(Intercept | 0, 2);
   target += student_t_lpdf(sd_1 | 3, 0, 2.5)
-    - 1 * student_t_lccdf(0 | 3, 0, 2.5);
+  - 1 * student_t_lccdf(0 | 3, 0, 2.5);
   target += std_normal_lpdf(z_1[1]);
   // (bias-related) 
-  target += dirichlet_lpdf(theta | rep_vector(1, N_alpha+1));
+  target += dirichlet_lpdf(eta | rep_vector(1, N_alpha+1));
 }
 generated quantities {
   // actual population-level intercept

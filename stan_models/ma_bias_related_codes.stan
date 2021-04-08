@@ -114,14 +114,14 @@ transformed data {
 parameters {
   // ...
   // (bias-related)
-  simplex[N_alpha+1] theta; // 
+  simplex[N_alpha+1] eta; // 
 }
 transformed parameters {
   //...
   vector<lower=0>[N_alpha+1] omega;  // (bias-related) publication bias!!!
   //...
-  // (bias-related) calculate omega based on theta from dirichlet
-  omega = cumulative_sum(theta);
+  // (bias-related) calculate omega based on eta from dirichlet
+  omega = cumulative_sum(eta);
 }
 model {
   // likelihood including constants
@@ -135,7 +135,7 @@ model {
   
   // ...
   // (bias-related) 
-  target += dirichlet_lpdf(theta | rep_vector(1, N_alpha+1));
+  target += dirichlet_lpdf(eta | rep_vector(1, N_alpha+1));
 }
 generated quantities {
   // ...

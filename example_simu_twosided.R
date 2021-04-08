@@ -1,4 +1,4 @@
-# Example 4: one-sided selection models
+# Example 4: two-sided selection models
 ## Simulate data
 library(tidyverse)
 library(brms)

@@ -1,6 +1,6 @@
 // generated with brms 2.15.0
 functions {
-   
+  
   real[] critical_value(real [] alpha_d, int side) {
     int k = size(alpha_d);
     real alpha_a[k] = sort_asc(alpha_d);
@@ -50,18 +50,18 @@ functions {
     // calculate the denominator for one-sdied (positive) tests
     // similar to library(RoBMA)
     for (i in 1:I) {
-          if (i == 1) {
-            cutoff = cutoffs[1] * se; 
-            sumdenom[1] = normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) * omega_I[1];
-          } else if (i == I) {
-            cutoff_pre = cutoffs[I-1] * se; 
-            sumdenom[I] = (1 - normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[I];
-          } else {
-            cutoff_pre = cutoffs[i-1] * se; 
-            cutoff = cutoffs[i] * se; 
-            sumdenom[i] = (normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) -
-            normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[i];
-          }
+      if (i == 1) {
+        cutoff = cutoffs[1] * se; 
+        sumdenom[1] = normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) * omega_I[1];
+      } else if (i == I) {
+        cutoff_pre = cutoffs[I-1] * se; 
+        sumdenom[I] = (1 - normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[I];
+      } else {
+        cutoff_pre = cutoffs[i-1] * se; 
+        cutoff = cutoffs[i] * se; 
+        sumdenom[i] = (normal_cdf(cutoff, mu, sqrt(tau * tau + se * se)) -
+        normal_cdf(cutoff_pre, mu, sqrt(tau * tau + se * se))) * omega_I[i];
+      }
     }
     
     return(log(sum(sumdenom)));
