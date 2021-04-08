@@ -150,7 +150,7 @@ ex4_bias_one2 <- stan(file = 'stan_models/ma_bias_twosided.stan', #  'stan_bias.
                      iter = 4000, warmup = 2000, 
                      control = list(adapt_delta = .9))
 MCMCsummary(ex4_bias_one2, params=c("b_Intercept", "omega", "cutoff_output"))
-# pairs(ex4_bias_one, pars=c("omega", "b_Intercept"))
+# pairs(ex4_bias_one2, pars=c("omega", "b_Intercept"))
 
 ex4_bias_one2_gamma_cumsum <- stan(file = 'stan_models/ma_bias_twosided_gamma_cumsum.stan', #  'stan_bias.stan',
                                    data = data_ls_one2,

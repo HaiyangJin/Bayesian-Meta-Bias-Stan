@@ -132,7 +132,7 @@ parameters {
 transformed parameters {
   real<lower=0> sigma = 0;  // residual SD
   // vector<lower=0,upper=1>[N_alpha+1] omega;  // (bias-related) publication bias
-  vector<lower=0>[N_alpha+1] omega;  // (bias-related) publication bias
+  vector<lower=0,upper=1+machine_precision()>[N_alpha+1] omega;  // (bias-related) publication bias
   vector[N_1] r_1_1;  // actual group-level effects
   r_1_1 = (sd_1[1] * (z_1[1]));
   // (bias-related) calculate omega based on theta from dirichlet
