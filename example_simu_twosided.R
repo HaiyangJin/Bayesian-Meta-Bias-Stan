@@ -45,18 +45,19 @@ df4 %>%
 ##################### Fit with brms #####################
 ### Fit the brm model (without publication bias)
 # Note: brms still fit two-sided models
-brmfit_one <- brm(g | se(SE) ~ 1 + (1|experiment), data = df4,
+bf4 <- bf(g | se(SE) ~ 1 + (1|experiment))
+brmfit_two <- brm(bf4, data = df4,
                chains = 6, cores = 6, seed = 12,
                control = list(adapt_delta = .9))
 
 
 ##################### Equivalent codes Set 1 ##################################
-# 1.28 and 1.65
-# Below functions essentially use one-sided p-value of 0.10 and 0.05 to set 
+# -1.96, -1.65, 1.65 and 1.96
+# Below functions essentially use two-sided p-value of 0.10 and 0.05 to set 
 # intervals for selection models. 
 
 ## with custom Stan codes.
-data_ls_one1 <- standata(brmfit_one)
+data_ls_one1 <- make_standata(bf4, data=df4)
 data_ls_one1$alpha <- c(0.10, 0.05)
 data_ls_one1$N_alpha <- length(data_ls_one1$alpha)  # number of intervals
 data_ls_one1$side <- 2
@@ -85,13 +86,13 @@ robma_1$models
 
 
 ##################### Equivalent codes Set 2 ##################################
-# 1.65 and 1.96
-# Below functions essentially use one-sided p-value of 0.05 and 0.025 to set 
-# intervals for selection models. This is equivalent to two-sided tests but only 
-# the positive effects are easier to be published.
+# -1.96, -1.65, 1.65 and 1.96
+# Below functions essentially use two-sided p-value of 0.10 and 0.05 to set 
+# intervals for selection models. But only the positive effects are easier to
+# be published.
 
 ## Fit the model with the publication bias (with one-sided)
-data_ls_one2 <- standata(brmfit_one)
+data_ls_one2 <- make_standata(bf4, data=df4)
 data_ls_one2$alpha <- c(.975, .95, 0.05, .025)
 data_ls_one2$N_alpha <- length(data_ls_one2$alpha)  # number of intervals
 data_ls_one2$side <- 1

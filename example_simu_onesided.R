@@ -33,19 +33,20 @@ df_simu_one <- tibble(
                          pvalue > .1 ~ 1),
            published = extraDistr::rbern(n(), w_publish[K]))
 
-df4 <- filter(df_simu_one, published==1)
+df3 <- filter(df_simu_one, published==1)
 
 df_simu_one %>%
     group_by(K) %>%
     summarize(mean(published), n())
 
-df4 %>% 
+df3 %>% 
     summarize(mean(g))
 
 ##################### Fit with brms #####################
 ### Fit the brm model (without publication bias)
 # Note: brms still fit two-sided models
-brmfit_one <- brm(g | se(SE) ~ 1 + (1|experiment), data = df4,
+bf3 <- bf(g | se(SE) ~ 1 + (1|experiment))
+brmfit_one <- brm(bf3, data = df3,
                chains = 6, cores = 6, seed = 12,
                control = list(adapt_delta = .9))
 
@@ -56,7 +57,7 @@ brmfit_one <- brm(g | se(SE) ~ 1 + (1|experiment), data = df4,
 # intervals for selection models. 
 
 ## with custom Stan codes.
-data_ls_one1 <- standata(brmfit_one)
+data_ls_one1 <- make_standata(bf3, data=df3)
 data_ls_one1$alpha <- c(0.10, 0.05)
 data_ls_one1$N_alpha <- length(data_ls_one1$alpha)  # number of intervals
 data_ls_one1$side <- 1
@@ -69,7 +70,7 @@ MCMCsummary(ex4_bias_one1, params=c("b_Intercept", "omega", "cutoff_output"))
 # pairs(ex4_bias_one, pars=c("omega", "b_Intercept"))
 
 ## With library(publipha)
-psmafit1 <- psma(yi = df4$g, vi = df4$SE^2, alpha = c(0, 0.05, 0.1, 1),
+psmafit1 <- psma(yi = df3$g, vi = df3$SE^2, alpha = c(0, 0.05, 0.1, 1),
                  iter = 4000, warmup = 2000, 
                  chains = 6, cores = 6, seed = 12,
                  control = list(adapt_delta = .9))
@@ -103,7 +104,7 @@ MCMCsummary(psmafit1_stan_gamma, params=c("theta0", "eta", "cutoff_output"))
 # Note: it seems that using gamma or dirichlet make differences. 
 
 ## With library(RoMBA)
-robma_1 <- RoBMA(d = df4$g, se = df4$SE,
+robma_1 <- RoBMA(d = df3$g, se = df3$SE,
                    priors_omega = list(prior(distribution = "one.sided", 
                                              parameters = list(alpha = c(1, 1, 1), 
                                                                steps = c(.05, .10)), 
@@ -121,7 +122,7 @@ robma_1$models
 # the positive effects are easier to be published.
 
 ## Fit the model with the publication bias (with one-sided)
-data_ls_one2 <- standata(brmfit_one)
+data_ls_one2 <- make_standata(bf3, data=df3)
 data_ls_one2$alpha <- c(0.05, .025)
 data_ls_one2$N_alpha <- length(data_ls_one2$alpha)  # number of intervals
 data_ls_one2$side <- 1
@@ -135,7 +136,7 @@ MCMCsummary(ex4_bias_one2, params=c("b_Intercept", "omega", "cutoff_output"))
 
 
 ## with library(publipha)
-psmafit2 <- psma(yi = df4$g, vi = df4$SE^2, alpha = c(0, 0.025, 0.05, 1),
+psmafit2 <- psma(yi = df3$g, vi = df3$SE^2, alpha = c(0, 0.025, 0.05, 1),
                  chains = 6, cores = 6, seed = 12,
                  iter = 4000, warmup = 2000, 
                  control = list(adapt_delta = .9))
@@ -170,7 +171,7 @@ MCMCsummary(psmafit2_stan_gamma, params=c("theta0", "eta", "cutoff_output"))
 
 
 ## With library(RoMBA)
-robma_2 <- RoBMA(d = df4$g, se = df4$SE,
+robma_2 <- RoBMA(d = df3$g, se = df3$SE,
                  priors_omega = list(prior(distribution = "one.sided", 
                                            parameters = list(alpha = c(1, 1, 1), 
                                                              steps = c(.025, .05)), 
