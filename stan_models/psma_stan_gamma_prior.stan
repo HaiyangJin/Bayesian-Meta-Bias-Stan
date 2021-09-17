@@ -198,9 +198,9 @@ model {
   // weights ~ dirichlet(eta0);
   
   for(n in 1:N) {
-    theta[n] ~ normal_lpdf(theta0, tau);
-    // theta[n] ~ psma_normal_prior_mini_lpdf(theta0, tau, sqrt(vi[n]), alpha, eta);
-    yi[n] ~ psma_normal_mini_lpdf(theta[n], theta0, tau, sqrt(vi[n]), alpha, eta, 1, cutoff);
+    theta[n] ~ normal(theta0, tau);
+    // theta[n] ~ psma_normal_prior_mini(theta0, tau, sqrt(vi[n]), alpha, eta);
+    yi[n] ~ psma_normal_mini(theta[n], theta0, tau, sqrt(vi[n]), alpha, eta, 1, cutoff);
   }
   
 }
